@@ -1,7 +1,12 @@
+# interface.py
+# Program to set up the interface.
+
 from tkinter import *
 from PIL import ImageTk, Image
 import glob, math, os
 from program import program
+from tkinter import messagebox
+
 
 # Main app.
 class interface(Frame):
@@ -15,14 +20,19 @@ class interface(Frame):
         self.pil_frame_imgs = []
         self.frame_desc = []
         self.frame_ranges = []
+        self.master = master
 
         # Check for pre-exisiting frames. If there are no frames, it will generate them.
         frames_present = self.check_frame_imgs()
         
+        self.loading_label = Label(self.master, text="Loading... Please wait.", font=("Helvetica", 16))
+        self.loading_label.pack(side=TOP, pady=20)
+
         # If there are frames present in frame_imgs, ask the user if they want to re-extract the
         # frames or skip extraction.
         if (frames_present):
             self.ask_conversion()
+            self.loading_label.pack_forget()
         
         # Ask user how intensity bins should be loaded
         self.program.ask_intensity_bins()
@@ -68,50 +78,21 @@ class interface(Frame):
         # Button to press play to play the frame's corresponding shot
         self.play_text = StringVar(value="Play")
         self.play_button = Button(master, bg="gray", textvariable=self.play_text, command=self.play_frame, fg="white", padx=8, pady=5)
+        # self.play_button.pack(side=BOTTOM, pady=8)
         self.play_button.pack(side=TOP, pady=8)
     
+
         # Create a frame for thumbnails below the Play button
         self.thumbnail_frame = Frame(master, bg="black", height=self.frame_height//4, width=(self.frame_width * len(self.frame_ranges) )//4)
+        # self.thumbnail_frame.pack(side=BOTTOM, pady=10)
         self.thumbnail_frame.pack(side=BOTTOM, pady=10, fill=BOTH, expand=True)
+
+        # self.thumbnail_frame.grid_columnconfigure(0, weight=1)
+        # self.thumbnail_frame.grid(row=1, column=1, sticky="w", pady=10)
         
-        # Pagination for thumbnail images
-        self.current_page = 0
-        self.images_per_page = 3
-
-        # Create next and previous page buttons
-        self.next_page_button = Button(master, text="Next Page", command=self.next_page)
-        self.next_page_button.pack(side=RIGHT, pady=8)
-
-        self.prev_page_button = Button(master, text="Previous Page", command=self.prev_page)
-        self.prev_page_button.pack(side=LEFT, pady=8)
 
         # Populate the thumbnail frame with thumbnail images
         self.populate_thumbnail_images()
-
-
-    def update_button_state(self):
-        total_pages = math.ceil(len(self.frame_imgs) / self.images_per_page)
-
-        if self.current_page == 0:
-            self.prev_page_button['state'] = 'disabled'
-        else:
-            self.prev_page_button['state'] = 'normal'
-
-        if self.current_page == total_pages - 1:
-            self.next_page_button['state'] = 'disabled'
-        else:
-            self.next_page_button['state'] = 'normal'
-
-    def next_page(self):
-        self.current_page += 1
-        self.populate_thumbnail_images()
-        self.update_button_state()
-
-    def prev_page(self):
-        if self.current_page > 0:
-            self.current_page -= 1
-            self.populate_thumbnail_images()
-            self.update_button_state()
 
     # New method to set the selected index when a thumbnail is clicked
     def set_selected_index(self, index):
@@ -136,44 +117,45 @@ class interface(Frame):
         else:
             print("Please select a frame from the Listbox or click a thumbnail before playing.")
     
-    def calculate_thumbnail_width(self):
-        # Calculate the width of each thumbnail so that three images together take up the black frame
-        total_width = self.frame_width
-        padding_x = 1
-        return (total_width - (self.images_per_page - 1) * padding_x) // self.images_per_page
-
     # Populate the thumbnail frame with thumbnail images
     def populate_thumbnail_images(self):
-        # Clear existing thumbnails
-        for widget in self.thumbnail_frame.winfo_children():
-            widget.destroy()
+    # Increase the size of the thumbnail images
+        thumbnail_scale_factor = 0.34  # You can adjust this factor based on your preference
 
-        thumbnail_width = self.calculate_thumbnail_width()
-        thumbnail_height = 70
-        padding_x = 1
+        self.thumbnail_width = self.frame_width // (9 * thumbnail_scale_factor)
+        self.thumbnail_height = self.frame_height // (9 * (thumbnail_scale_factor + 0.07))
+        self.padding_x = 1  # Adjust the horizontal padding
+        self.padding_y = 1  # Adjust the vertical padding
 
-        start_index = self.current_page * self.images_per_page
-        end_index = start_index + self.images_per_page
-
-        for i in range(start_index, min(end_index, len(self.frame_imgs))):
+        for i in range(len(self.frame_ranges)):
             frame = self.frame_ranges[i][0]
             path = f'frame_imgs/frame{frame}.jpg'
 
             im = Image.open(path)
-            im.thumbnail((thumbnail_width, thumbnail_height), Image.ANTIALIAS)
+            im.thumbnail((self.thumbnail_width, self.thumbnail_height), Image.ANTIALIAS)
             photo = ImageTk.PhotoImage(im)
 
-            thumbnail_label = Label(self.thumbnail_frame, image=photo, width=thumbnail_width, height=thumbnail_height)
-            thumbnail_label.grid(row=0, column=i % self.images_per_page, padx=(padding_x, 0), pady=(0, 0))
+            # Calculate row and column in the 3x9 grid
+            row = i // 9
+            col = i % 9
 
+            thumbnail_label = Label(self.thumbnail_frame, image=photo, width=self.thumbnail_width, height=self.thumbnail_height)
+            thumbnail_label.grid(row=row, column=col, padx=(self.padding_x, 0), pady=(self.padding_y, 0))
+
+            # Save a reference to the image to prevent it from being garbage collected
             thumbnail_label.image = photo
 
+            # Add a label for frame number
             frame_number_label = Label(self.thumbnail_frame, text=f"Frame {frame}", fg="white", bg="black")
-            frame_number_label.grid(row=1, column=i % self.images_per_page, padx=(padding_x, 0), pady=(0, 0))
+            frame_number_label.grid(row=row, column=col, padx=(self.padding_x, 0), pady=(self.padding_y, 0))
 
+            # Bind the set_selected_index method to the thumbnail label
             thumbnail_label.bind('<Button-1>', lambda event, index=i: self.set_selected_index(index))
+
+            # Raise the frame number label to be on top
             frame_number_label.lift()
-        self.update_button_state()
+
+
 
 
     # Turn frames into pil images for tkinter to display
@@ -253,26 +235,35 @@ class interface(Frame):
         else:
             return True
     
+
     def ask_conversion(self):
-        convert = input("Convert from pre-existing frames? (y/n) ")
+        print("hey")
+        # Use messagebox.askquestion for both prompts
+        convert = messagebox.askquestion("Convert from pre-existing frames?", "Convert from pre-existing frames?", icon='question')
 
         while True:
             convert = convert.lower()
-            if (convert == "n"):
+            if convert == "no":
                 self.program.extract_frames()
                 self.program.get_dimensions()
                 break
-            elif (convert == "y"):
+            elif convert == "yes":
                 self.convert_to_pil_imgs()
                 self.program.get_dimensions()
                 break
-            convert = input("Please enter y or n ")
-
+            convert = messagebox.askquestion("Convert from pre-existing frames?", "Please choose Yes or No", icon='question')
 
 # Executable section.
 if __name__ == '__main__':
     root = Tk()
     root.title('Video Shot Boundary Detection App')
+
+    # Maximize the window
+    root.state('zoomed')
+
+    root.bind('<Escape>', lambda event: root.attributes('-fullscreen', False))  # Press Esc to exit full screen
     root.resizable(0, 0)
+
     imageViewer = interface(root)
+
     root.mainloop()

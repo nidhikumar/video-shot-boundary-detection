@@ -5,6 +5,9 @@ import cv2
 import os
 import glob
 import numpy as np
+from tkinter import simpledialog
+from tkinter import messagebox
+
 
 class program:
     def __init__(self):
@@ -38,17 +41,15 @@ class program:
     
     # Ask user to load or generate intensity bins, and use appropriate function accordingly
     def ask_intensity_bins(self):
-        generate = input("Load pre-existing intensity bins? (y/n) ")
-        while True:
-            generate = generate.lower()
-            if (generate == "n"):
-                self.generate_intensity_bins()
-                break
-            elif (generate == "y"):
+        response = messagebox.askquestion("Load pre-existing intensity bins?", "Load pre-existing intensity bins?", icon='question')
+
+        if response.lower() == "no":
+            self.generate_intensity_bins()
+        elif response.lower() == "yes":
+            response = messagebox.askquestion("Load pre-existing intensity bins?", "Do you want to load intensity bins?", icon='question')
+            if response.lower() == "yes":
                 self.intensity_bins = self.load_intensity_bins()
                 self.intensity_bins = np.array(self.intensity_bins).tolist()
-                break
-            generate = input("Please enter y or n ")
 
         
     def load_intensity_bins(self):
