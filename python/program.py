@@ -165,8 +165,7 @@ class program:
         finally:
             file.close
             return data
-        
-    # Get frame to frame difference to generate SD's
+
     def generate_sd(self):
         # Iterate through bins, comparing adjacent frame bins
         for i in range(len(self.intensity_bins) - 1):
@@ -185,9 +184,11 @@ class program:
         
         # For gradual transition
         self.ts = np.mean(self.sd_array) * 2
+        print("Ts = ",self.ts)
         
         # For cut
         self.tb = np.mean(self.sd_array) + np.std(self.sd_array) * 11
+        print("Tb = ",self.tb)
         
         
     # Use twin-comparison based method to find start and end frames of a cut/gradual transition
@@ -215,6 +216,7 @@ class program:
             
             # Meeting this condition means its a cut
             if self.sd_array[frame_ind] >= self.tb:
+                # print("Frame index = ",frame_ind," ==> ",self.tb)
                 cs = frame_ind
                 ce = frame_ind + 1
                 
@@ -227,26 +229,25 @@ class program:
             # Meeting this condition means it is potentially a gradual transition
             elif self.ts <= self.sd_array[frame_ind] < self.tb:
                 fs_candi = frame_ind
-                
                 for after_frame_ind in range(frame_ind + 1, len(self.sd_array)):
-                    
                     # Next SD is above gradual transition threshold but below cut threshold
                     if self.ts <= self.sd_array[after_frame_ind] < self.tb:
                         tor = 0
                         continue
-                    
                     # Next SD is below gradual transition threshold
                     elif self.sd_array[after_frame_ind] < self.ts:
                         tor += 1
                         if tor == 2:  # Two consecutive SD's below self.ts
                             fe_candi = after_frame_ind - 2
-                            
+                            if(frame_ind==3891):
+                                print("ok3",fs_candi,fe_candi)
+                                print("sd ====> ",self.sd_array[frame_ind])
+                                print("after frame index = ",after_frame_ind)
+
                             self.summation(fs_candi, fe_candi)
                             skip_to_frame = fe_candi # Skip the frames we processed
                             tor = 0  # Reset tor
-                            
                             break
-                        
                         continue
                     
                     # Next SD equals cut (self.tb) threshold
@@ -261,22 +262,24 @@ class program:
                     
     def summation(self, fs_candi, fe_candi):
         sd_total = 0
-        
-        
         if fs_candi == 3298:
             return
-            
+
         # Summation of the candidate range 
         else:
             for sd_ind in range(fs_candi, fe_candi + 1):
                 sd_total += self.sd_array[sd_ind]
 
+            if(fs_candi==3891):
+                print("ok",sd_total,"==> ",self.tb, "==> ",fe_candi,"---",fs_candi)
+                # print("Sd array for ok => ",self.sd_array[sd_ind])
+
         # Summation meets cut threshold, they are real start and end frames
         if sd_total >= self.tb:
-            if fs_candi == 2620:
-                fs_candi += 3
-            elif fs_candi == 3607:
-                fs_candi -= 4
+            # if fs_candi == 2620:
+            #     fs_candi += 3
+            # elif fs_candi == 3607:
+            #     fs_candi -= 4
             fs = fs_candi
             fe = fe_candi
             self.frame_results["fs"].append(fs + self.start_frame)
