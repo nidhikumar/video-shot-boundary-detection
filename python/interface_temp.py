@@ -9,115 +9,109 @@ from tkinter import messagebox
 
 
 class interface(Frame):
-    # Constructor
     def __init__(self, master):
 
+        # Initialize the program object and set up variables for frame dimensions and image lists
         self.program = program()
         self.frame_width = 500
         self.frame_height = 300
-        self.frame_imgs = []
-        self.pil_frame_imgs = []
+        self.frame_images_arr = []
+        self.frame_images_list = []
         self.frame_desc = []
         self.frame_ranges = []
         self.master = master
 
-        # Check for pre-exisiting frames. If there are no frames, it will generate them.
-        frames_present = self.check_frame_imgs()
+        # Check for pre-existing frames and display loading label
+        frames_present = self.get_existing_frame_images()
         
         self.loading_label = Label(self.master, text="Loading... Please wait.", font=("Helvetica", 16))
         self.loading_label.pack(side=TOP, pady=20)
 
-        # If there are frames present in frame_imgs, ask the user if they want to re-extract the
-        # frames or skip extraction.
+        # Ask the user about frame conversion if frames are present
         if (frames_present):
-            self.ask_conversion()
+            self.conversion()
             self.loading_label.pack_forget()
         
-        # Ask user how intensity bins should be loaded
-        self.program.ask_intensity_bins()
+        # Ask the user how intensity bins should be loaded
+        self.program.get_intensity_bins()
         
-        # Generate SD values
-        self.program.generate_sd()
+        # Generate standard deviations of intensity
+        self.program.get_sd()
         
-        # Calculate thresholds from SD values
-        self.program.set_thresholds()
+        # Calculate thresholds from standard deviations
+        self.program.apply_threshold()
         
-        # Calculate start and end frames with Twin-comparison based approach
-        self.program.find_frames()
+        # Calculate start and end frames with the Twin Comparison approach
+        self.program.get_frames()
         
-        # Print the sets of (Cs, Ce) and (Fs, Fe).
+        # Print the sets of (Cs, Ce) and (Fs, Fe)
         self.program.frame_sets()
         
         print("Now loading interface...")
         
-        # Populate self.frame_imgs with result frames so they appear in Listbox
+        # Populate self.frame_images with result frames so they appear in Listbox
         self.populate_frame_imgs()
         
-        # Generate cut's start and end frames 
-        self.program.generate_frame_imgs()
-        
-        # Generate window
+        # Initialize the main frame
         Frame.__init__(self, master)
         self.master = master
 
-        # Create Main frame.
         self.mainFrame = Frame(master)
         self.mainFrame.columnconfigure(0, weight=1)
         self.mainFrame.columnconfigure(1, weight=5)
         self.mainFrame.rowconfigure(0, weight=1)
         self.mainFrame.pack(fill='both', expand=True)
         
-        # Create label that shows frames
+        # Load a default image and display it in a Label
         img = Image.open('default.jpg')
         img = img.resize((self.frame_width, self.frame_height), Image.ANTIALIAS)
         self.chosen_frame = ImageTk.PhotoImage(img)
         self.frameLabel = Label(self.mainFrame, width=500, bg="black", image=self.chosen_frame)
-        self.frameLabel.grid(column=1, row=0, sticky=NS, padx=10, pady=10)
+        self.frameLabel.grid(column=1, row=0, sticky=NS, padx=5, pady=10)
     
-        # Button to press play to play the frame's corresponding shot
+        # Set up Play button
         self.play_text = StringVar(value="Play")
         self.play_button = Button(master, bg="gray", textvariable=self.play_text, command=self.play_frame, fg="white", padx=8, pady=5)
-        # self.play_button.pack(side=BOTTOM, pady=8)
         self.play_button.pack(side=TOP, pady=8)
     
-
         # Create a frame for thumbnails below the Play button
         self.thumbnail_frame = Frame(master, bg="white", height=self.frame_height//4, width=(self.frame_width * len(self.frame_ranges) )//4)
-        # self.thumbnail_frame.pack(side=BOTTOM, pady=10)
         self.thumbnail_frame.pack(side=BOTTOM, pady=10, fill=BOTH, expand=True)
-
-        # self.thumbnail_frame.grid_columnconfigure(0, weight=1)
-        # self.thumbnail_frame.grid(row=1, column=1, sticky="w", pady=10)
-        
 
         # Populate the thumbnail frame with thumbnail images
         self.populate_thumbnail_images()
 
-    # New method to set the selected index when a thumbnail is clicked
+    # Method to set the selected index when a thumbnail is clicked
     def set_selected_index(self, index):
+        # Store the selected index for future reference
         self.selected_index = index
         frame_set = self.frame_ranges[index]
         i = frame_set[0]
-        pil_frame = self.pil_frame_imgs[i - self.program.start_frame]
-        self.frameLabel.configure(image=pil_frame)
-        self.frameLabel.image = pil_frame
+        # Retrieve and display the selected image frame in the main Label
+        image_frame = self.frame_images_list[i - self.program.start_frame]
+        self.frameLabel.configure(image=image_frame)
+        self.frameLabel.image = image_frame
 
+    # Method to play frames sequentially
     def play_frame(self, frame=0):
+        # Check if a thumbnail is selected
         if hasattr(self, 'selected_index'):
             selected_frame_index = self.selected_index
-            frame_set = self.frame_ranges[selected_frame_index]  # get the shot start and end range
+            frame_set = self.frame_ranges[selected_frame_index]
             i = frame_set[0] + frame
-            if i - self.program.start_frame > frame_set[1] - self.program.start_frame:  # done at last frame of shot
+            # Check if the frame is within the selected range
+            if i - self.program.start_frame > frame_set[1] - self.program.start_frame:
                 return
-            pil_frame = self.pil_frame_imgs[i - self.program.start_frame]
+            pil_frame = self.frame_images_list[i - self.program.start_frame]
+            # Update the main Label with the current frame
             self.frameLabel.configure(image=pil_frame)
             self.frameLabel.image = pil_frame
+            # Schedule the next frame to be played after a delay
             root.after(15, self.play_frame, frame + 1)
         else:
-            print("Please select a frame from the Listbox or click a thumbnail before playing.")
-    
+            # If no thumbnail is selected, show a warning message
+            messagebox.showinfo("Warning", "Please click a thumbnail before playing.")
 
-    # Populate the thumbnail frame with thumbnail images
     def populate_thumbnail_images(self):
         o_thumbnail_width = 500
         o_thumbnail_height = 400
@@ -131,7 +125,7 @@ class interface(Frame):
 
         for i in range(len(self.frame_ranges)):
             frame = self.frame_ranges[i][0]
-            path = f'frame_imgs/frame{frame}.jpg'
+            path = f'frame_images/frame{frame}.jpg'
 
             im = Image.open(path)
             im.thumbnail((self.thumbnail_width, self.thumbnail_height), Image.ANTIALIAS)
@@ -175,84 +169,101 @@ class interface(Frame):
             return "Unknown"
 
 
-    # Turn frames into pil images for tkinter to display
-    def convert_to_pil_imgs(self):
-        # Add each frame into self.frame_imgs
-        for infile in (glob.glob('frame_imgs/*.jpg')):
+    # Method to convert images and store them in a list
+    def convert_images(self):
+        # Iterate over all image files in the 'frame_images' folder
+        for infile in (glob.glob('frame_images/*.jpg')):
+            # Open each image file
             im = Image.open(infile)
 
-            # Resize to fit the frame
+            # Resize the image to fit the frame dimensions
             imResize = im.resize((self.frame_width, self.frame_height), Image.ANTIALIAS)
+            
+            # Convert the resized image to PhotoImage format
             photo = ImageTk.PhotoImage(imResize)
 
-            # Add the images to the list.
-            self.pil_frame_imgs.append(photo)
-        
-    # Event "listener" for listbox change.
+            # Append the PhotoImage to the list of frame images
+            self.frame_images_list.append(photo)
+
+    # Event "listener" for listbox change, updates the preview by index
     def update_preview_by_index(self, index):
-        self.chosen_frame = self.frame_imgs[index]
-        self.frameLabel.configure(image=self.chosen_frame)
+        # Retrieve the PhotoImage at the specified index
+        selected_frame_image = self.frame_images_arr[index]
+
+        # Update the main Label with the selected frame image
+        self.frameLabel.configure(image=selected_frame_image)
     
-    # Read in all frame images from the folder frame_imgs, then convert to
-    # a image that can be presented in tkinter
+    # Method to populate frame ranges and descriptions
     def populate_frame_imgs(self):
+        # Initialize lists to store start and end frames
         start_frames = [self.program.start_frame]
-        # Ce, Fs + 1 are first frame of previous shot
+        end_frames = [self.program.end_frame]
+
+        # Append Ce frames as start frames
         for ce_frame in self.program.frame_results["ce"]:
             start_frames.append(ce_frame)
+        # Append Fs + 1 frames as start frames
         for fs_frame in self.program.frame_results["fs"]:
             start_frames.append(fs_frame + 1)
         start_frames.sort()
-            
-        end_frames = [self.program.end_frame]
-        
-        # Cs, Fs are end frames of previous shot
+
+        # Append Cs frames as end frames
         for cs_frame in self.program.frame_results["cs"]:
             end_frames.append(cs_frame)
+        # Append Fs frames as end frames
         for fs_frame in self.program.frame_results["fs"]:
             end_frames.append(fs_frame)
         end_frames.sort()
-        
+
+        # Iterate over the start frames to create shot ranges
         for i in range(len(start_frames)):
+            # Skip the first iteration (index 0)
             if i == 0:
                 continue
+            # Create a tuple representing the shot range (start frame, end frame)
             shot = (start_frames[i], end_frames[i])
             self.frame_ranges.append(shot)
-            self.frame_desc.append(str(start_frames[i]))            
+            # Add the start frame description to the list
+            self.frame_desc.append(str(start_frames[i]))
 
+        # Iterate over the frame ranges to load and convert images
         for shot in self.frame_ranges:
-            path = f'frame_imgs/frame{shot[0]}.jpg'
+            # Generate the file path for the frame image
+            path = f'frame_images/frame{shot[0]}.jpg'
             
+            # Open the image file
             im = Image.open(path)
 
-            # Resize to fit the frame
+            # Resize the image to fit the frame dimensions
             imResize = im.resize((self.frame_width, self.frame_height), Image.ANTIALIAS)
+            
+            # Convert the resized image to PhotoImage format
             photo = ImageTk.PhotoImage(imResize)
 
-            # Add the images to the list.
-            self.frame_imgs.append(photo)
-        
-    # Check if the 'frame_imgs' folder has any pre-existing frames
-    def check_frame_imgs(self):
-        # Locate frame_imgs folder that stores the frames
-        dirname = os.path.dirname(__file__)
-        path = os.path.join(dirname, 'frame_imgs')
+            # Append the PhotoImage to the list of frame images
+            self.frame_images_arr.append(photo)
 
-        # Getting the list of directories
+    # Method to check if there are pre-existing frame images
+    def get_existing_frame_images(self):
+        # Locate the 'frame_images' folder that stores the frames
+        dirname = os.path.dirname(__file__)
+        path = os.path.join(dirname, 'frame_images')
+
+        # Get the list of directories in the folder
         dir = os.listdir(path)
   
-        # Checking if the list is empty or not
+        # Check if the list is empty or not
         if len(dir) == 0:  
             print("There are no pre-existing frame images.")
-            print("Frame images will now be extracted into 'frame_imgs' folder")
+            print("Frame images will now be extracted into 'frame_images' folder")
 
+            # Extract frames if none exist
             self.program.extract_frames()
             return False
-
         else:
             return True 
 
-    def ask_conversion(self):
+    def conversion(self):
         # Use messagebox.askquestion for both prompts
         convert = messagebox.askquestion("Convert from pre-existing frames?", "Convert from pre-existing frames?", icon='question')
 
@@ -263,7 +274,7 @@ class interface(Frame):
                 self.program.get_dimensions()
                 break
             elif convert == "yes":
-                self.convert_to_pil_imgs()
+                self.convert_images()
                 self.program.get_dimensions()
                 break
             convert = messagebox.askquestion("Convert from pre-existing frames?", "Please choose Yes or No", icon='question')
@@ -271,7 +282,7 @@ class interface(Frame):
 # Executable section.
 if __name__ == '__main__':
     root = Tk()
-    root.title('Video Shot Boundary Detection App')
+    root.title('CSS 584 - Video Shot Boundary Detection')
 
     # Maximize the window
     root.state('zoomed')
