@@ -268,11 +268,6 @@ class program:
                         # Check if three consecutive frames are below Ts
                         if tor == 2:
                             fe_candi = after_frame_ind - 2
-                            # Debug print statements (optional)
-                            if frame_ind == 3891:
-                                print("ok3", fs_candi, fe_candi)
-                                print("sd ====> ", self.sd_array[frame_ind])
-                                print("after frame index = ", after_frame_ind)
                             # Process the gradual transition frames
                             self.summation(fs_candi, fe_candi)
                             skip_to_frame = fe_candi  # Skip frames already identified as a gradual transition
