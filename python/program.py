@@ -11,7 +11,9 @@ from tkinter import messagebox
 
 class program:
     def __init__(self):
-        self.video_name = "20020924_juve_dk_02a.mpg"
+        # self.video_name = "20020924_juve_dk_02a.mpg"
+        # self.video_name = "20020924_juve_dk_02a.avi"
+        self.video_name = r".\\20020924_juve_dk_02a_1.avi"
         self.resolution = 0
         self.frame_width = 352
         self.frame_height = 288
@@ -42,12 +44,9 @@ class program:
     # Ask user to load or generate intensity bins, and use appropriate function accordingly
     def ask_intensity_bins(self):
         response = messagebox.askquestion("Load pre-existing intensity bins?", "Load pre-existing intensity bins?", icon='question')
-
         if response.lower() == "no":
             self.generate_intensity_bins()
         elif response.lower() == "yes":
-            response = messagebox.askquestion("Load pre-existing intensity bins?", "Do you want to load intensity bins?", icon='question')
-            if response.lower() == "yes":
                 self.intensity_bins = self.load_intensity_bins()
                 self.intensity_bins = np.array(self.intensity_bins).tolist()
 
@@ -100,43 +99,43 @@ class program:
                 continue
             break
 
-        # 'count' variable would be here, but to make it less confusing put end_frame start_frame numbers instead
-        # Add one since reading start and end frame inclusive 
         print(f'{self.end_frame - self.start_frame + 1} frames have been read')
 
+    def calculate_intensity(self, rgb_frame):
+        weights = np.array([0.299, 0.587, 0.114]) 
+        intensity_values = np.dot(rgb_frame.reshape(-1, 3), weights)
 
-    # Intensity method
-    # Formula: I = 0.299R + 0.587G + 0.114B
-    # 24-bit of RGB (8 bits for each color channel) color
-    # intensities are transformed into a single 8-bit value.
-    # There are 25 histogram bins, bin 0 to bin 24.
+        histogram, _ = np.histogram(intensity_values, bins=np.linspace(1, 256, 26))
+
+        return histogram
+
     def generate_intensity_bins(self):
-        # Make sure it is a python array instead of a numpy array
-        self.intensity_bins = np.array(self.intensity_bins).tolist()
-        
-        # Array of arrays. Each array in intensity_bins is for each frame (#1,000 to #4,999)
-        # e.g. first array will have 25 bins (25 numbers in array) for frame #1,000
-        for img_index in range(len(self.pil_imgs)):
-            print(f"Processing {img_index} image")
-            self.intensity_bins.append([0]*25) # Add array that stores 25 bins for each image
-            img = self.pil_imgs[img_index]
-            for y in range(self.frame_height):  # reads pixels left to right, top down (by each row).
-                for x in range(self.frame_width):  # This example code reads the RGB (red, green, blue) values
+        cap = cv2.VideoCapture(self.video_name)
+        if not cap.isOpened():
+            print("Error: Could not open video file.")
+            return None  # Return None if the video cannot be opened
 
-                    r, g, b = img.getpixel((x, y))  # in every pixel of a 'x' pixel wide 'y' pixel tall image.
-                    intensity = (0.299 * r) + (0.587 * g) + (0.114 * b)
-                    bin = int(intensity // 10)  # Division rounds down to bin number.. in this case bins will range 0-24 (25 bins).
+        frames_to_process = range(1000, 5000)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        print("Total frames in the video:", total_frames)
 
-                    if bin == 25:  # last bin is 240 to 255, so bin of 24 and 25 will be
-                        bin = 24  # combined to correspond to bin 24
-                    self.intensity_bins[img_index][bin] += 1  # allocate pixel to corresponding bin
+        intensity_histograms = []
 
-        # Turn back to numpy array to save results
-        self.intensity_bins = np.asarray(self.intensity_bins, dtype=np.int32)
-        
-        # Save results to file
+        for frame_index in range(total_frames):
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if frame_index in frames_to_process:
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                intensity_histogram = self.calculate_intensity(rgb_frame)
+                intensity_histograms.append(intensity_histogram)
+
+        cap.release()
+        self.intensity_bins = np.array(intensity_histograms)
+
         self.save_to_file(self.intensity_bins, "intensity_bins")
-        
+
         return self.intensity_bins
 
 
@@ -276,10 +275,6 @@ class program:
 
         # Summation meets cut threshold, they are real start and end frames
         if sd_total >= self.tb:
-            # if fs_candi == 2620:
-            #     fs_candi += 3
-            # elif fs_candi == 3607:
-            #     fs_candi -= 4
             fs = fs_candi
             fe = fe_candi
             self.frame_results["fs"].append(fs + self.start_frame)
