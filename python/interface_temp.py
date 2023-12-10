@@ -63,7 +63,7 @@ class interface(Frame):
         self.mainFrame.pack(fill='both', expand=True)
         
         # Load a default image and display it in a Label
-        img = Image.open('default.jpg')
+        img = Image.open(f".\\default.jpg")
         img = img.resize((self.frame_width, self.frame_height), Image.ANTIALIAS)
         self.chosen_frame = ImageTk.PhotoImage(img)
         self.frameLabel = Label(self.mainFrame, width=500, bg="black", image=self.chosen_frame)
@@ -126,7 +126,7 @@ class interface(Frame):
 
         for i in range(len(self.frame_ranges)):
             frame = self.frame_ranges[i][0]
-            path = f'frame_images/frame{frame}.jpg'
+            path = rf'frame_images/frame{frame}.jpg'
 
             im = Image.open(path)
             im.thumbnail((self.thumbnail_width, self.thumbnail_height), Image.ANTIALIAS)
@@ -169,11 +169,11 @@ class interface(Frame):
         else:
             return "Unknown"
 
-
     # Method to convert images and store them in a list
     def convert_images(self):
         # Iterate over all image files in the 'frame_images' folder
-        for infile in (glob.glob('frame_images/*.jpg')):
+        path = r".\frame_images\*.jpg"
+        for infile in (glob.glob(path)):
             # Open each image file
             im = Image.open(infile)
 
@@ -230,7 +230,7 @@ class interface(Frame):
         # Iterate over the frame ranges to load and convert images
         for shot in self.frame_ranges:
             # Generate the file path for the frame image
-            path = f'frame_images/frame{shot[0]}.jpg'
+            path = rf".\\frame_images/frame{shot[0]}.jpg"
             
             # Open the image file
             im = Image.open(path)
@@ -247,10 +247,11 @@ class interface(Frame):
     # Method to check if there are pre-existing frame images
     def get_existing_frame_images(self):
         # Locate the 'frame_images' folder that stores the frames
-        dirname = os.path.dirname(__file__)
-        path = os.path.join(dirname, 'frame_images')
-
+                # dirname = os.path.dirname(__file__)
+        # path = os.path.join(dirname, 'frame_images')
         # Get the list of directories in the folder
+        path = r".\\frame_images"
+
         dir = os.listdir(path)
   
         # Check if the list is empty or not
@@ -266,20 +267,20 @@ class interface(Frame):
 
     def conversion(self):
         # Use messagebox.askquestion for both prompts
-        convert = messagebox.askquestion("Convert from pre-existing frames?", "Convert from pre-existing frames?", icon='question')
+        message = messagebox.askquestion("Convert from pre-existing frames?", "Convert from pre-existing frames?", icon='question')
 
         while True:
-            convert = convert.lower()
-            if convert == "no":
+            message = message.lower()
+            if message == "no":
                 self.program.extract_frames()
                 self.convert_images()
                 self.program.get_dimensions()
                 break
-            elif convert == "yes":
+            elif message == "yes":
                 self.convert_images()
                 self.program.get_dimensions()
                 break
-            convert = messagebox.askquestion("Convert from pre-existing frames?", "Please choose Yes or No", icon='question')
+            message = messagebox.askquestion("Convert from pre-existing frames?", "Please choose Yes or No", icon='question')
 
 # Executable section.
 if __name__ == '__main__':
