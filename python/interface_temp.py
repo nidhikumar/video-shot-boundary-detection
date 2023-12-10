@@ -92,6 +92,7 @@ class interface(Frame):
         self.frameLabel.configure(image=image_frame)
         self.frameLabel.image = image_frame
 
+
     # Method to play frames sequentially
     def play_frame(self, frame=0):
         # Check if a thumbnail is selected
@@ -271,6 +272,7 @@ class interface(Frame):
             convert = convert.lower()
             if convert == "no":
                 self.program.extract_frames()
+                self.convert_images()
                 self.program.get_dimensions()
                 break
             elif convert == "yes":
