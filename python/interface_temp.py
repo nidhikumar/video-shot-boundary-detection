@@ -8,14 +8,13 @@ from program import program
 from tkinter import messagebox
 
 
-# Main app.
 class interface(Frame):
     # Constructor
     def __init__(self, master):
 
         self.program = program()
         self.frame_width = 500
-        self.frame_height = 400
+        self.frame_height = 300
         self.frame_imgs = []
         self.pil_frame_imgs = []
         self.frame_desc = []
@@ -83,7 +82,7 @@ class interface(Frame):
     
 
         # Create a frame for thumbnails below the Play button
-        self.thumbnail_frame = Frame(master, bg="black", height=self.frame_height//4, width=(self.frame_width * len(self.frame_ranges) )//4)
+        self.thumbnail_frame = Frame(master, bg="white", height=self.frame_height//4, width=(self.frame_width * len(self.frame_ranges) )//4)
         # self.thumbnail_frame.pack(side=BOTTOM, pady=10)
         self.thumbnail_frame.pack(side=BOTTOM, pady=10, fill=BOTH, expand=True)
 
@@ -117,13 +116,16 @@ class interface(Frame):
         else:
             print("Please select a frame from the Listbox or click a thumbnail before playing.")
     
+
     # Populate the thumbnail frame with thumbnail images
     def populate_thumbnail_images(self):
-    # Increase the size of the thumbnail images
+        o_thumbnail_width = 500
+        o_thumbnail_height = 400
+        # Increase the size of the thumbnail images
         thumbnail_scale_factor = 0.34  # You can adjust this factor based on your preference
 
-        self.thumbnail_width = self.frame_width // (9 * thumbnail_scale_factor)
-        self.thumbnail_height = self.frame_height // (9 * (thumbnail_scale_factor + 0.07))
+        self.thumbnail_width = o_thumbnail_width // (10 * thumbnail_scale_factor)
+        self.thumbnail_height = o_thumbnail_height // (10 * (thumbnail_scale_factor + 0.07))
         self.padding_x = 1  # Adjust the horizontal padding
         self.padding_y = 1  # Adjust the vertical padding
 
@@ -136,18 +138,22 @@ class interface(Frame):
             photo = ImageTk.PhotoImage(im)
 
             # Calculate row and column in the 3x9 grid
-            row = i // 9
-            col = i % 9
+            row = i // 10
+            col = i % 10
 
+            # Determine the type of transition for the frame
+            transition_type = self.get_transition_type(frame)
+
+            # Create thumbnail label
             thumbnail_label = Label(self.thumbnail_frame, image=photo, width=self.thumbnail_width, height=self.thumbnail_height)
-            thumbnail_label.grid(row=row, column=col, padx=(self.padding_x, 0), pady=(self.padding_y, 0))
+            thumbnail_label.grid(row=row * 2, column=col, padx=(self.padding_x, 0), pady=(self.padding_y, 0))
 
             # Save a reference to the image to prevent it from being garbage collected
             thumbnail_label.image = photo
 
-            # Add a label for frame number
-            frame_number_label = Label(self.thumbnail_frame, text=f"Frame {frame}", fg="white", bg="black")
-            frame_number_label.grid(row=row, column=col, padx=(self.padding_x, 0), pady=(self.padding_y, 0))
+            # Create label for frame number with transition type
+            frame_number_label = Label(self.thumbnail_frame, text=f"Frame {frame} ({transition_type})", fg="white", bg="black")
+            frame_number_label.grid(row=row * 2 + 1, column=col, padx=(self.padding_x, 0), pady=(self.padding_y, 0))
 
             # Bind the set_selected_index method to the thumbnail label
             thumbnail_label.bind('<Button-1>', lambda event, index=i: self.set_selected_index(index))
@@ -155,7 +161,18 @@ class interface(Frame):
             # Raise the frame number label to be on top
             frame_number_label.lift()
 
-
+    # Method to get the type of transition for a frame
+    def get_transition_type(self, frame):
+        # Your logic to determine the transition type based on frame number
+        # For example, you can check if the frame is in the list of Cut frames
+        if frame-1 in self.program.frame_results["cs"]:
+            return "Cut"
+        # Or check if the frame is in the list of Gradual Transition frames
+        elif frame-1 in self.program.frame_results["fs"]:
+            return "GT"
+        # If the frame is not identified as Cut or Gradual Transition, you can return an appropriate value
+        else:
+            return "Unknown"
 
 
     # Turn frames into pil images for tkinter to display
@@ -170,7 +187,6 @@ class interface(Frame):
 
             # Add the images to the list.
             self.pil_frame_imgs.append(photo)
-        
         
     # Event "listener" for listbox change.
     def update_preview_by_index(self, index):
@@ -198,6 +214,8 @@ class interface(Frame):
         end_frames.sort()
         
         for i in range(len(start_frames)):
+            if i == 0:
+                continue
             shot = (start_frames[i], end_frames[i])
             self.frame_ranges.append(shot)
             self.frame_desc.append(str(start_frames[i]))            
@@ -214,7 +232,6 @@ class interface(Frame):
             # Add the images to the list.
             self.frame_imgs.append(photo)
         
-
     # Check if the 'frame_imgs' folder has any pre-existing frames
     def check_frame_imgs(self):
         # Locate frame_imgs folder that stores the frames
@@ -233,11 +250,9 @@ class interface(Frame):
             return False
 
         else:
-            return True
-    
+            return True 
 
     def ask_conversion(self):
-        print("hey")
         # Use messagebox.askquestion for both prompts
         convert = messagebox.askquestion("Convert from pre-existing frames?", "Convert from pre-existing frames?", icon='question')
 
