@@ -86,7 +86,8 @@ class program:
         
         # Create a directory to store the extracted frames
         dirname = os.path.dirname(__file__)
-        path = os.path.join(dirname, 'frame_images')
+        # path = os.path.join(dirname, 'frame_images')
+        path= r".\\frame_images"
         
         while success:
             # Skip frames until the start_frame is reached
